@@ -20,32 +20,39 @@ const createSkill = async (req, res) => {
 
 const getAllSkills = async (req, res) => {
   try {
-    const { category, tag, search } = req.query;
-    let query = {};
+    const { category, tag, search, page = 1, limit = 10 } = req.query;
 
-    if (category) {
-      query.category = category;
-    }
+    const query = {};
 
-    if (tag) {
-      query.tags = { $in: [tag] };
-    }
-
+    if (category) query.category = category;
+    if (tag) query.tags = { $in: [tag] };
     if (search) {
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
+        { title:       { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
-        { tags: { $regex: search, $options: "i" } }
+        { tags:        { $regex: search, $options: "i" } }
       ];
     }
 
-    const skills = await SkillPost.find(query).populate("user", "name email");
+    const total = await SkillPost.countDocuments(query);
 
-    res.json(skills);
+    const skills = await SkillPost.find(query)
+      .populate("user", "name email")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    res.json({
+      skills,
+      currentPage: Number(page),
+      totalPages: Math.ceil(total / limit),
+      totalResults: total
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 const updateSkill = async (req, res) => {
   try {
