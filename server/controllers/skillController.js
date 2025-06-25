@@ -20,7 +20,27 @@ const createSkill = async (req, res) => {
 
 const getAllSkills = async (req, res) => {
   try {
-    const skills = await SkillPost.find().populate("user", "name email");
+    const { category, tag, search } = req.query;
+    let query = {};
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (tag) {
+      query.tags = { $in: [tag] };
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { tags: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const skills = await SkillPost.find(query).populate("user", "name email");
+
     res.json(skills);
   } catch (err) {
     res.status(500).json({ error: err.message });
